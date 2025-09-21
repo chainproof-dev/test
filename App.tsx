@@ -10,6 +10,7 @@ import Header from './components/Header';
 import StartScreen from './components/StartScreen';
 import EditorView from './components/EditorView';
 import ErrorToast from './components/ErrorToast';
+import SettingsModal from './components/SettingsModal';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -33,6 +34,21 @@ const App: React.FC = () => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Load API key from localStorage on initial render
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('gemini-api-key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    }
+  }, []);
+
+  const handleSaveApiKey = (newKey: string) => {
+    setApiKey(newKey);
+    localStorage.setItem('gemini-api-key', newKey);
+  };
 
   const currentImage = history[historyIndex] ?? null;
 
@@ -59,15 +75,20 @@ const App: React.FC = () => {
   }, []);
 
   const handleAction = useCallback(async (
-    action: (image: File, prompt: string) => Promise<string>,
+    action: (apiKey: string, image: File, prompt: string) => Promise<string>,
     image: File,
     prompt: string,
     clearActionState: () => void
   ) => {
+    if (!apiKey) {
+      setError("API Key not set. Please add your Gemini API Key in the settings.");
+      setIsSettingsOpen(true);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const resultUrl = await action(image, prompt);
+      const resultUrl = await action(apiKey, image, prompt);
       const newImageFile = dataURLtoFile(resultUrl, `result-${Date.now()}.png`);
       addImageToHistory(newImageFile, clearActionState);
     } catch (err) {
@@ -77,14 +98,19 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [addImageToHistory]);
+  }, [addImageToHistory, apiKey]);
 
   const handleGenerate = useCallback(async (prompt: string, hotspot: {x: number, y: number}, clearActionState: () => void) => {
       if (!currentImage) return;
+      if (!apiKey) {
+        setError("API Key not set. Please add your Gemini API Key in the settings.");
+        setIsSettingsOpen(true);
+        return;
+      }
       setIsLoading(true);
       setError(null);
       try {
-          const editedImageUrl = await generateEditedImage(currentImage, prompt, hotspot);
+          const editedImageUrl = await generateEditedImage(apiKey, currentImage, prompt, hotspot);
           const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
           addImageToHistory(newImageFile, clearActionState);
       } catch (err) {
@@ -94,7 +120,7 @@ const App: React.FC = () => {
       } finally {
           setIsLoading(false);
       }
-  }, [currentImage, addImageToHistory]);
+  }, [currentImage, addImageToHistory, apiKey]);
 
   const handleApplyFilter = useCallback((prompt: string, clearActionState: () => void) => {
     if (!currentImage) return;
@@ -155,7 +181,11 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-800 flex flex-col bg-gray-50">
-      <Header onUploadNew={handleUploadNew} showActions={!!currentImage} />
+      <Header 
+        onUploadNew={handleUploadNew} 
+        showActions={!!currentImage}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
       <main className={`flex-grow w-full max-w-screen-2xl mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-stretch' : 'items-center'}`}>
         {!currentImage ? (
           <StartScreen onFileSelect={(files) => files && files[0] && handleImageUpload(files[0])} />
@@ -178,6 +208,12 @@ const App: React.FC = () => {
         )}
       </main>
       <ErrorToast message={error} onDismiss={() => setError(null)} />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={handleSaveApiKey}
+        currentApiKey={apiKey}
+      />
     </div>
   );
 };

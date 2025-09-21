@@ -3,14 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React from 'react';
-import { SparkleIcon } from './icons';
+import { SparkleIcon, SettingsIcon } from './icons';
 
 interface HeaderProps {
   onUploadNew: () => void;
   showActions: boolean;
+  onOpenSettings: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onUploadNew, showActions }) => {
+const Header: React.FC<HeaderProps> = ({ onUploadNew, showActions, onOpenSettings }) => {
   return (
     <header className="w-full py-3 px-4 md:px-8 border-b border-gray-200 bg-white sticky top-0 z-50">
       <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
@@ -20,16 +21,23 @@ const Header: React.FC<HeaderProps> = ({ onUploadNew, showActions }) => {
               Pixshop
             </h1>
           </div>
-          {showActions && (
-            <div className="flex items-center gap-2">
-               <button 
+          <div className="flex items-center gap-2">
+            {showActions && (
+              <button 
                 onClick={onUploadNew}
                 className="text-center bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-200 active:scale-95 text-sm"
-               >
+              >
                 Upload New
               </button>
-            </div>
-          )}
+            )}
+            <button
+              onClick={onOpenSettings}
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              aria-label="Open settings"
+            >
+              <SettingsIcon className="w-6 h-6" />
+            </button>
+          </div>
       </div>
     </header>
   );
