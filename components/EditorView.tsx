@@ -64,6 +64,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   const [prompt, setPrompt] = useState<string>('');
   const [editHotspot, setEditHotspot] = useState<{ x: number, y: number } | null>(null);
   const [displayHotspot, setDisplayHotspot] = useState<{ x: number, y: number } | null>(null);
+  const [selectionRadius, setSelectionRadius] = useState<number>(50);
   const [activeTool, setActiveTool] = useState<Tool>('retouch');
   
   // Crop state
@@ -117,15 +118,26 @@ const EditorView: React.FC<EditorViewProps> = ({
     setCompletedCrop(undefined);
     setEditHotspot(null);
     setDisplayHotspot(null);
+    setSelectionRadius(50);
     setTextElements([]);
     setStickerElements([]);
     setActiveElement(null);
+    setDragging(null);
   }, []);
 
   useEffect(() => {
     clearTransientState();
     setAdjustments(defaultAdjustments);
   }, [historyIndex, clearTransientState]);
+
+  // Clear transient state when switching tools
+  useEffect(() => {
+    setEditHotspot(null);
+    setDisplayHotspot(null);
+    setSelectionRadius(50);
+    setActiveElement(null);
+    setDragging(null);
+  }, [activeTool]);
 
   const imageFilterStyle = {
     filter: `
@@ -280,6 +292,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   // Drag and Drop handlers for overlays
   const handleDragStart = (e: React.MouseEvent, type: 'text' | 'sticker', id: number) => {
     e.preventDefault();
+    e.stopPropagation();
     setActiveElement({ type, id });
     const rect = e.currentTarget.getBoundingClientRect();
     const parentRect = canvasContainerRef.current?.getBoundingClientRect();
@@ -295,13 +308,14 @@ const EditorView: React.FC<EditorViewProps> = ({
   const handleDrag = (e: React.MouseEvent) => {
     if (!dragging) return;
     e.preventDefault();
+    e.stopPropagation();
     const parentRect = canvasContainerRef.current?.getBoundingClientRect();
     if (!parentRect) return;
 
     const x = e.clientX - parentRect.left - dragging.offsetX;
     const y = e.clientY - parentRect.top - dragging.offsetY;
-    const xPercent = (x / parentRect.width) * 100;
-    const yPercent = (y / parentRect.height) * 100;
+    const xPercent = Math.max(0, Math.min(100, (x / parentRect.width) * 100));
+    const yPercent = Math.max(0, Math.min(100, (y / parentRect.height) * 100));
 
     if (dragging.type === 'text') {
       setTextElements(prev => prev.map(el => el.id === dragging.id ? { ...el, x: xPercent, y: yPercent } : el));
@@ -312,9 +326,33 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   const handleDragEnd = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragging(null);
   };
+
+  const handleElementClick = (e: React.MouseEvent, type: 'text' | 'sticker', id: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveElement({ type, id });
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    // Only clear active element if clicking on empty space
+    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'IMG') {
+      if (activeTool === 'text' || activeTool === 'stickers') {
+        setActiveElement(null);
+      }
+    }
+  };
   
+  // Determine if we should show before/after comparison
+  const shouldShowComparison = () => {
+    if (activeTool === 'retouch') {
+      return editHotspot !== null; // Only show after area is selected
+    }
+    return activeTool !== 'crop' && activeTool !== 'text' && activeTool !== 'stickers';
+  };
+
   const renderActiveToolPanel = () => {
     switch (activeTool) {
         case 'retouch':
@@ -324,6 +362,22 @@ const EditorView: React.FC<EditorViewProps> = ({
                     <p className="text-sm text-gray-500 -mt-2 text-center">
                         {editHotspot ? 'Great! Now describe your edit below.' : 'Click an area on the image to make a precise edit.'}
                     </p>
+                    {editHotspot && (
+                        <div className="w-full">
+                            <label className="flex justify-between items-center text-sm font-medium text-gray-600 mb-2">
+                                <span>Selection Size</span>
+                                <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{selectionRadius}px</span>
+                            </label>
+                            <input
+                                type="range"
+                                min="20"
+                                max="150"
+                                value={selectionRadius}
+                                onChange={(e) => setSelectionRadius(parseInt(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                        </div>
+                    )}
                     <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex flex-col items-center gap-3">
                         <input
                             type="text"
@@ -423,8 +477,8 @@ const EditorView: React.FC<EditorViewProps> = ({
                         </div>
                     )}
                     
-                    <div ref={canvasContainerRef} className="relative max-w-full max-h-full w-full h-full flex items-center justify-center" onClick={() => setActiveElement(null)}>
-                        {activeTool === 'retouch' ? (
+                    <div ref={canvasContainerRef} className="relative max-w-full max-h-full w-full h-full flex items-center justify-center" onClick={handleCanvasClick}>
+                        {activeTool === 'retouch' || activeTool === 'text' || activeTool === 'stickers' ? (
                             currentImageUrl && <img ref={imageRef} src={currentImageUrl} alt="Current" onClick={handleImageClick} style={{...imageFilterStyle, objectFit: 'contain' }} className={`max-w-full max-h-[75vh] object-contain block cursor-crosshair`} />
                         ) : activeTool === 'crop' ? (
                             currentImageUrl && (
@@ -432,7 +486,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                                     <img ref={imgCropRef} src={currentImageUrl} alt="Crop this" className="max-w-full max-h-[75vh] object-contain block" />
                                 </ReactCrop>
                             )
-                        ) : (
+                        ) : shouldShowComparison() && (
                             originalImageUrl && currentImageUrl && (
                                 <ReactCompareSlider
                                     itemOne={<ReactCompareSliderImage ref={imageRef} src={originalImageUrl} alt="Original" style={{ filter: 'none', objectFit: 'contain' }}/>}
@@ -443,8 +497,28 @@ const EditorView: React.FC<EditorViewProps> = ({
                         )}
                         
                         {displayHotspot && !isLoading && activeTool === 'retouch' && (
-                            <div className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10 shadow-lg" style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}>
-                                <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
+                            <div 
+                                className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10" 
+                                style={{ 
+                                    left: `${displayHotspot.x}px`, 
+                                    top: `${displayHotspot.y}px`,
+                                    width: `${selectionRadius * 2}px`,
+                                    height: `${selectionRadius * 2}px`
+                                }}
+                            >
+                                {/* Outer selection circle */}
+                                <div className="absolute inset-0 rounded-full border-2 border-blue-500 bg-blue-500/10 shadow-lg">
+                                    <div className="absolute inset-0 rounded-full animate-ping border-2 border-blue-400 bg-blue-400/20"></div>
+                                </div>
+                                {/* Center crosshair */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <div className="w-4 h-0.5 bg-blue-600 absolute -translate-x-1/2"></div>
+                                    <div className="h-4 w-0.5 bg-blue-600 absolute -translate-y-1/2"></div>
+                                </div>
+                                {/* Selection indicator text */}
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                    Selection Area
+                                </div>
                             </div>
                         )}
 
@@ -452,9 +526,10 @@ const EditorView: React.FC<EditorViewProps> = ({
                         {stickerElements.map(sticker => (
                           <div
                             key={sticker.id}
-                            className={`absolute cursor-grab active:cursor-grabbing transition-all duration-75 ${activeElement?.type === 'sticker' && activeElement.id === sticker.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                            className={`absolute cursor-grab active:cursor-grabbing transition-all duration-75 hover:scale-105 ${activeElement?.type === 'sticker' && activeElement.id === sticker.id ? 'ring-2 ring-blue-500 ring-offset-2 scale-105' : ''}`}
                             style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}px` }}
                             onMouseDown={e => {e.stopPropagation(); handleDragStart(e, 'sticker', sticker.id)}}
+                            onClick={e => handleElementClick(e, 'sticker', sticker.id)}
                           >
                             <img src={sticker.src} alt="sticker" className="w-full h-auto pointer-events-none" />
                           </div>
@@ -463,7 +538,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                         {textElements.map(text => (
                           <div
                             key={text.id}
-                            className={`absolute cursor-grab active:cursor-grabbing whitespace-nowrap p-1 transition-all duration-75 ${activeElement?.type === 'text' && activeElement.id === text.id ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                            className={`absolute cursor-grab active:cursor-grabbing whitespace-nowrap p-1 transition-all duration-75 hover:scale-105 ${activeElement?.type === 'text' && activeElement.id === text.id ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : ''}`}
                             style={{
                               left: `${text.x}%`,
                               top: `${text.y}%`,
@@ -474,6 +549,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                               fontStyle: text.italic ? 'italic' : 'normal'
                             }}
                             onMouseDown={e => {e.stopPropagation(); handleDragStart(e, 'text', text.id)}}
+                            onClick={e => handleElementClick(e, 'text', text.id)}
                           >
                             {text.text}
                           </div>
