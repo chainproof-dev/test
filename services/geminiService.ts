@@ -63,25 +63,30 @@ const handleApiResponse = (
     throw new Error(errorMessage);
 };
 
+const getGenAIClient = (apiKey: string) => {
+    const finalApiKey = apiKey || process.env.API_KEY;
+    if (!finalApiKey) {
+        throw new Error("API key is not configured. Please set it in your environment or provide one in the app settings.");
+    }
+    return new GoogleGenAI({ apiKey: finalApiKey });
+};
+
 /**
  * Generates an edited image using generative AI based on a text prompt and a specific point.
- * @param apiKey The user's Gemini API key.
  * @param originalImage The original image file.
  * @param userPrompt The text prompt describing the desired edit.
  * @param hotspot The {x, y} coordinates on the image to focus the edit.
+ * @param apiKey An optional user-provided API key.
  * @returns A promise that resolves to the data URL of the edited image.
  */
 export const generateEditedImage = async (
-    apiKey: string,
     originalImage: File,
     userPrompt: string,
-    hotspot: { x: number, y: number }
+    hotspot: { x: number, y: number },
+    apiKey: string
 ): Promise<string> => {
-    if (!apiKey) {
-        throw new Error("API key is missing. Please add it in the settings.");
-    }
     console.log('Starting generative edit at:', hotspot);
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getGenAIClient(apiKey);
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to perform a natural, localized edit on the provided image based on the user's request.
@@ -114,21 +119,18 @@ Output: Return ONLY the final edited image. Do not return text.`;
 
 /**
  * Generates an image with a filter applied using generative AI.
- * @param apiKey The user's Gemini API key.
  * @param originalImage The original image file.
  * @param filterPrompt The text prompt describing the desired filter.
+ * @param apiKey An optional user-provided API key.
  * @returns A promise that resolves to the data URL of the filtered image.
  */
 export const generateFilteredImage = async (
-    apiKey: string,
     originalImage: File,
     filterPrompt: string,
+    apiKey: string
 ): Promise<string> => {
-    if (!apiKey) {
-        throw new Error("API key is missing. Please add it in the settings.");
-    }
     console.log(`Starting filter generation: ${filterPrompt}`);
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getGenAIClient(apiKey);
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to apply a stylistic filter to the entire image based on the user's request. Do not change the composition or content, only apply the style.
@@ -156,21 +158,18 @@ Output: Return ONLY the final filtered image. Do not return text.`;
 
 /**
  * Generates an image with a global adjustment applied using generative AI.
- * @param apiKey The user's Gemini API key.
  * @param originalImage The original image file.
  * @param adjustmentPrompt The text prompt describing the desired adjustment.
+ * @param apiKey An optional user-provided API key.
  * @returns A promise that resolves to the data URL of the adjusted image.
  */
 export const generateAdjustedImage = async (
-    apiKey: string,
     originalImage: File,
     adjustmentPrompt: string,
+    apiKey: string
 ): Promise<string> => {
-    if (!apiKey) {
-        throw new Error("API key is missing. Please add it in the settings.");
-    }
     console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getGenAIClient(apiKey);
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to perform a natural, global adjustment to the entire image based on the user's request.

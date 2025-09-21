@@ -34,20 +34,20 @@ const App: React.FC = () => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Load API key from localStorage on initial render
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('gemini-api-key');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
+    const savedKey = localStorage.getItem('gemini-api-key');
+    if (savedKey) {
+        setApiKey(savedKey);
     }
   }, []);
 
   const handleSaveApiKey = (newKey: string) => {
     setApiKey(newKey);
     localStorage.setItem('gemini-api-key', newKey);
+    setIsSettingsOpen(false);
   };
 
   const currentImage = history[historyIndex] ?? null;
@@ -75,20 +75,15 @@ const App: React.FC = () => {
   }, []);
 
   const handleAction = useCallback(async (
-    action: (apiKey: string, image: File, prompt: string) => Promise<string>,
+    action: (image: File, prompt: string, apiKey: string) => Promise<string>,
     image: File,
     prompt: string,
     clearActionState: () => void
   ) => {
-    if (!apiKey) {
-      setError("API Key not set. Please add your Gemini API Key in the settings.");
-      setIsSettingsOpen(true);
-      return;
-    }
     setIsLoading(true);
     setError(null);
     try {
-      const resultUrl = await action(apiKey, image, prompt);
+      const resultUrl = await action(image, prompt, apiKey);
       const newImageFile = dataURLtoFile(resultUrl, `result-${Date.now()}.png`);
       addImageToHistory(newImageFile, clearActionState);
     } catch (err) {
@@ -102,17 +97,13 @@ const App: React.FC = () => {
 
   const handleGenerate = useCallback(async (prompt: string, hotspot: {x: number, y: number}, clearActionState: () => void) => {
       if (!currentImage) return;
-      if (!apiKey) {
-        setError("API Key not set. Please add your Gemini API Key in the settings.");
-        setIsSettingsOpen(true);
-        return;
-      }
       setIsLoading(true);
       setError(null);
       try {
-          const editedImageUrl = await generateEditedImage(apiKey, currentImage, prompt, hotspot);
+          const editedImageUrl = await generateEditedImage(currentImage, prompt, hotspot, apiKey);
           const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
           addImageToHistory(newImageFile, clearActionState);
+      // FIX: Added opening curly brace for the catch block and formatted its content correctly.
       } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
           setError(`Failed to generate the image. ${errorMessage}`);
@@ -139,6 +130,11 @@ const App: React.FC = () => {
 
   const handleApplyManualAdjustments = useCallback((adjustedImageUrl: string, clearActionState: () => void) => {
     const newImageFile = dataURLtoFile(adjustedImageUrl, `adjusted-${Date.now()}.png`);
+    addImageToHistory(newImageFile, clearActionState);
+  }, [addImageToHistory]);
+
+  const handleApplyCompositedImage = useCallback((compositedImageUrl: string, clearActionState: () => void) => {
+    const newImageFile = dataURLtoFile(compositedImageUrl, `composited-${Date.now()}.png`);
     addImageToHistory(newImageFile, clearActionState);
   }, [addImageToHistory]);
   
@@ -183,8 +179,8 @@ const App: React.FC = () => {
     <div className="min-h-screen text-gray-800 flex flex-col bg-gray-50">
       <Header 
         onUploadNew={handleUploadNew} 
-        showActions={!!currentImage}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        showActions={!!currentImage}
       />
       <main className={`flex-grow w-full max-w-screen-2xl mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-stretch' : 'items-center'}`}>
         {!currentImage ? (
@@ -199,6 +195,7 @@ const App: React.FC = () => {
             onApplyAdjustment={handleApplyAdjustment}
             onApplyCrop={handleApplyCrop}
             onApplyManualAdjustments={handleApplyManualAdjustments}
+            onApplyCompositedImage={handleApplyCompositedImage}
             onUndo={handleUndo}
             onRedo={handleRedo}
             onReset={handleReset}
@@ -208,7 +205,7 @@ const App: React.FC = () => {
         )}
       </main>
       <ErrorToast message={error} onDismiss={() => setError(null)} />
-      <SettingsModal
+      <SettingsModal 
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onSave={handleSaveApiKey}

@@ -7,11 +7,11 @@ import { SparkleIcon, SettingsIcon } from './icons';
 
 interface HeaderProps {
   onUploadNew: () => void;
-  showActions: boolean;
   onOpenSettings: () => void;
+  showActions: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onUploadNew, showActions, onOpenSettings }) => {
+const Header: React.FC<HeaderProps> = ({ onUploadNew, onOpenSettings, showActions }) => {
   return (
     <header className="w-full py-3 px-4 md:px-8 border-b border-gray-200 bg-white sticky top-0 z-50">
       <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
@@ -31,10 +31,10 @@ const Header: React.FC<HeaderProps> = ({ onUploadNew, showActions, onOpenSetting
               </button>
             )}
             <button
-              onClick={onOpenSettings}
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-              aria-label="Open settings"
-            >
+                onClick={onOpenSettings}
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                aria-label="Settings"
+              >
               <SettingsIcon className="w-6 h-6" />
             </button>
           </div>

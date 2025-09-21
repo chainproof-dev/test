@@ -74,3 +74,16 @@ export const SettingsIcon: React.FC<{ className?: string }> = ({ className }) =>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a8.966 8.966 0 0 1-5.982-1.555 8.966 8.966 0 0 1-3.956-4.545 8.966 8.966 0 0 1 0-6.802 8.966 8.966 0 0 1 3.956-4.545A8.966 8.966 0 0 1 12 3a8.966 8.966 0 0 1 5.982 1.555 8.966 8.966 0 0 1 3.956 4.545 8.966 8.966 0 0 1 0 6.802 8.966 8.966 0 0 1-3.956 4.545A8.966 8.966 0 0 1 12 21Z" />
     </svg>
 );
+
+export const TextIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-5.25 3h9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0Z" />
+    </svg>
+);
+  
+export const EmojiHappyIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4.072 4.072 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+);

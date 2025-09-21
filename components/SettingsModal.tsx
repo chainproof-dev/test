@@ -9,70 +9,68 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (apiKey: string) => void;
-  currentApiKey: string | null;
+  currentApiKey: string;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentApiKey }) => {
-  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [localApiKey, setLocalApiKey] = useState(currentApiKey);
 
   useEffect(() => {
-    if (isOpen && currentApiKey) {
-      setApiKeyInput(currentApiKey);
-    }
-  }, [isOpen, currentApiKey]);
-
-  if (!isOpen) return null;
+    setLocalApiKey(currentApiKey);
+  }, [currentApiKey, isOpen]);
 
   const handleSave = () => {
-    onSave(apiKeyInput);
-    onClose();
+    onSave(localApiKey);
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center animate-fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+    <div 
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center animate-fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md m-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-gray-200">
           <h2 id="settings-title" className="text-xl font-bold text-gray-800">Settings</h2>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:bg-gray-200" aria-label="Close settings">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <p className="text-sm text-gray-500 mt-1">
+            Optionally provide your own Gemini API key. If left blank, a default key will be used.
+          </p>
         </div>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 mb-1">
-              Gemini API Key
-            </label>
-            <input
-              id="api-key-input"
-              type="password"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="w-full bg-white border border-gray-300 text-gray-800 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-              placeholder="Enter your API key"
-            />
-            <p className="text-xs text-gray-500 mt-2">
-              Your API key is stored securely in your browser's local storage. You can get a key from{' '}
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                Google AI Studio
-              </a>.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="text-center bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-200 active:scale-95"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="bg-blue-600 text-white font-bold py-2 px-5 rounded-lg transition-all duration-300 ease-in-out shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-px active:scale-95"
-            >
-              Save
-            </button>
-          </div>
+        <div className="p-6">
+          <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 mb-2">
+            Gemini API Key
+          </label>
+          <input
+            id="api-key-input"
+            type="password"
+            value={localApiKey}
+            onChange={(e) => setLocalApiKey(e.target.value)}
+            placeholder="Enter your API key here"
+            className="w-full bg-gray-50 border border-gray-300 text-gray-800 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+          />
+        </div>
+        <div className="p-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="text-center bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-300 active:scale-95 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="bg-blue-600 text-white font-bold py-2 px-5 rounded-lg transition-all duration-300 ease-in-out shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-px active:scale-95 text-sm"
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>
