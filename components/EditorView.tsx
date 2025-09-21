@@ -86,25 +86,27 @@ const EditorView: React.FC<EditorViewProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const currentImage = history[historyIndex];
   const originalImage = history[0];
-  const [currentImageUrl, setCurrentImageUrl] = useState<string>('');
-  const [originalImageUrl, setOriginalImageUrl] = useState<string>('');
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    let url = '';
     if (currentImage) {
-      url = URL.createObjectURL(currentImage);
+      const url = URL.createObjectURL(currentImage);
       setCurrentImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setCurrentImageUrl(null);
     }
-    return () => URL.revokeObjectURL(url);
   }, [currentImage]);
   
   useEffect(() => {
-    let url = '';
     if (originalImage) {
-      url = URL.createObjectURL(originalImage);
+      const url = URL.createObjectURL(originalImage);
       setOriginalImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setOriginalImageUrl(null);
     }
-    return () => URL.revokeObjectURL(url);
   }, [originalImage]);
 
   const canUndo = historyIndex > 0;
@@ -184,6 +186,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   };
 
   const handleApplyManualAdjustments = () => {
+    if (!currentImageUrl) return;
     const image = new Image();
     image.crossOrigin = "anonymous";
     image.onload = () => {
@@ -206,6 +209,7 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   const handleApplyOverlays = useCallback(() => {
     if (textElements.length === 0 && stickerElements.length === 0) return;
+    if (!currentImageUrl) return;
   
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -421,17 +425,21 @@ const EditorView: React.FC<EditorViewProps> = ({
                     
                     <div ref={canvasContainerRef} className="relative max-w-full max-h-full w-full h-full flex items-center justify-center" onClick={() => setActiveElement(null)}>
                         {activeTool === 'retouch' ? (
-                            <img ref={imageRef} src={currentImageUrl} alt="Current" onClick={handleImageClick} style={{...imageFilterStyle, objectFit: 'contain' }} className={`max-w-full max-h-[75vh] object-contain block cursor-crosshair`} />
+                            currentImageUrl && <img ref={imageRef} src={currentImageUrl} alt="Current" onClick={handleImageClick} style={{...imageFilterStyle, objectFit: 'contain' }} className={`max-w-full max-h-[75vh] object-contain block cursor-crosshair`} />
                         ) : activeTool === 'crop' ? (
-                            <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect}>
-                                <img ref={imgCropRef} src={currentImageUrl} alt="Crop this" className="max-w-full max-h-[75vh] object-contain block" />
-                            </ReactCrop>
+                            currentImageUrl && (
+                                <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect}>
+                                    <img ref={imgCropRef} src={currentImageUrl} alt="Crop this" className="max-w-full max-h-[75vh] object-contain block" />
+                                </ReactCrop>
+                            )
                         ) : (
-                            <ReactCompareSlider
-                                itemOne={<ReactCompareSliderImage ref={imageRef} src={originalImageUrl} alt="Original" style={{ filter: 'none', objectFit: 'contain' }}/>}
-                                itemTwo={<ReactCompareSliderImage src={currentImageUrl} alt="Current" style={{...imageFilterStyle, objectFit: 'contain' }} />}
-                                className="max-w-full max-h-[75vh] object-contain block"
-                            />
+                            originalImageUrl && currentImageUrl && (
+                                <ReactCompareSlider
+                                    itemOne={<ReactCompareSliderImage ref={imageRef} src={originalImageUrl} alt="Original" style={{ filter: 'none', objectFit: 'contain' }}/>}
+                                    itemTwo={<ReactCompareSliderImage src={currentImageUrl} alt="Current" style={{...imageFilterStyle, objectFit: 'contain' }} />}
+                                    className="max-w-full max-h-[75vh] object-contain block"
+                                />
+                            )
                         )}
                         
                         {displayHotspot && !isLoading && activeTool === 'retouch' && (
